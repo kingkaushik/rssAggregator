@@ -4,4 +4,5 @@ clone the repository
 
 npm install 
 
-node index.js
+nodemon /bin/www
+
