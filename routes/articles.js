@@ -2,12 +2,14 @@ const express = require('express');
 const router = express.Router();
 const rp = require('request-promise');
 const xml2js = require ('xml2js');
+const Article = require('../models/Article')
+const feed_urls = require('../feed_urls.js')
+const threshold = 10;
 
-// const url = 'https://9to5google.com/feed/';
-const url = 'https://timesofindia.indiatimes.com/rssfeedstopstories.cms'
-const response=[]
+var response = [];
 
-function unified(req,respo){
+function getFeed(url, feedType){
+  response = [];
   rp(url)
     .then(function(html){
       xml2js.parseString (html,(err,res)=>{
@@ -24,19 +26,93 @@ function unified(req,respo){
           item.description=items[i].description?items[i].description[0]:'Description not available';
           response.push(item)
         })
-        var payloadString=JSON.stringify(response)
-        respo.setHeader('Content-Type','application/json')
-        respo.writeHead(200)
-        respo.end(payloadString)  
+        var payloadString=JSON.stringify(response);
+        console.log();
+        save_articles(response, feedType);
       });
     })
     .catch(function(err){
       console.log(err);
     });
-}
 
-router.get('/articles',(req, res) => {
-  unified(req,res);
+};
+
+let save_articles = (articles_list, feedType) => {
+  for(let article of articles_list){
+    Article.findOne({"feedType": feedType, "title": article.title}, function(err, doc, successCallback=storeArticle){
+      if(err) throw err;
+      if(doc){
+        console.log('Article is existing in the db');
+      }else{
+        successCallback(article, feedType);
+      }
+    });
+  }
+};
+
+let storeArticle = function(article, feedType){
+  var record = new Article();
+  record.feedType = feedType;
+  record.title = article.title;
+  record.link = article.link;
+  record.category = article.category;
+  record.description = article.description || "None";
+  console.log("start\n",article.description, "end\n")
+  record.pubDate = article.date;
+  record.save(function(err, row){
+    if(err) throw err;
+    else{
+      if(row){
+        console.log('Record insert successfull', row)
+      }
+    }
+  });
+};
+
+let fetch_articles = () => {
+  console.log('List of feed_urls', feed_urls);
+  for(let feed of feed_urls){
+      Object.entries(feed).forEach((array) => {
+        let url = array[1];
+        let feedType = array[0];
+        console.log(`Hitting the URL ${url} for the articles`);
+        getFeed(url, feedType);
+      });
+  }
+};
+
+let get_articles = (articleType, successCallback) => {
+  Article.find({feedType: articleType}).sort({timeStamp: -1}).limit(threshold).exec(function(err, docs){
+    if(err) throw err;
+    successCallback(docs);
+  })
+};
+
+let getLatestArticles = (successCallback) => {
+  Article.find({}).sort({timeStamp: -1}).limit(threshold).exec(function(err, docs){
+    successCallback(docs);
+  })
+};
+
+router.get('/storeArticles', (req, res) => {
+  fetch_articles();
+  res.send("<marquee direction='ltr'> hello world</marquee>");
+});
+
+router.get('/latest', (req, res) => {
+  function sendResponse(articles){
+    res.send(articles);
+  };
+  getLatestArticles(sendResponse);
+});
+
+router.get('/:articleType', (req, res) => {
+  let articleType = req.params.articleType;
+  console.log(articleType)
+  function sendResponse(articles){
+    res.send(articles);
+  };
+  get_articles(articleType, sendResponse);
 });
 
 module.exports = router;
