@@ -1,8 +1,9 @@
-"# RssAggregator" 
+"# RssAggregator"
 
 clone the repository
 
-npm install 
+npm install
 
 nodemon /bin/www
 
+hahah
