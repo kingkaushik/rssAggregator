@@ -30,6 +30,10 @@ var articleSchema = new schema({
   pubDate: {
     type: String,
     required: true
+  },
+  website: {
+    type: String,
+    required: true
   }
 });
 

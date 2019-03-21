@@ -1,4 +1,4 @@
-let feed_urls = [];
+let feed_urls = {};
 let toi_feed_urls = {
   'topstories': 'https://timesofindia.indiatimes.com/rssfeedstopstories.cms',
   'mostrecentstories': 'https://timesofindia.indiatimes.com/rssfeeds/1221656.cms',
@@ -11,6 +11,6 @@ let toi_feed_urls = {
   'health': 'http://timesofindia.indiatimes.com/rssfeeds/3908999.cms',
   'science': 'http://timesofindia.indiatimes.com/rssfeeds/-2128672765.cms',
 };
-feed_urls.push(toi_feed_urls);
+feed_urls['toi'] = toi_feed_urls;
 
 module.exports = feed_urls;
