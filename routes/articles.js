@@ -5,10 +5,11 @@ const xml2js = require ('xml2js');
 const Article = require('../models/Article')
 const feed_urls = require('../feed_urls.js')
 const threshold = 10;
+const seperator = '.';
 
 var response = [];
 
-function getFeed(url, feedType){
+function getFeed(url, feedType, website){
   response = [];
   rp(url)
     .then(function(html){
@@ -28,7 +29,7 @@ function getFeed(url, feedType){
         })
         var payloadString=JSON.stringify(response);
         console.log();
-        save_articles(response, feedType);
+        save_articles(response, feedType, website);
       });
     })
     .catch(function(err){
@@ -37,22 +38,23 @@ function getFeed(url, feedType){
 
 };
 
-let save_articles = (articles_list, feedType) => {
+let save_articles = (articles_list, feedType, website) => {
   for(let article of articles_list){
     Article.findOne({"feedType": feedType, "title": article.title}, function(err, doc, successCallback=storeArticle){
       if(err) throw err;
       if(doc){
         console.log('Article is existing in the db');
       }else{
-        successCallback(article, feedType);
+        successCallback(article, feedType, website);
       }
     });
   }
 };
 
-let storeArticle = function(article, feedType){
+let storeArticle = function(article, feedType, website){
   var record = new Article();
   record.feedType = feedType;
+  record.website = website;
   record.title = article.title;
   record.link = article.link;
   record.category = article.category;
@@ -69,14 +71,17 @@ let storeArticle = function(article, feedType){
   });
 };
 
-let fetch_articles = () => {
+let store_articles = () => {
   console.log('List of feed_urls', feed_urls);
-  for(let feed of feed_urls){
-      Object.entries(feed).forEach((array) => {
+  for(let feed of Object.entries(feed_urls)){
+      let website = feed[0];
+      console.log('for website', website)
+      let urls = feed[1];
+      Object.entries(urls).forEach((array) => {
         let url = array[1];
         let feedType = array[0];
         console.log(`Hitting the URL ${url} for the articles`);
-        getFeed(url, feedType);
+        getFeed(url, feedType, website);
       });
   }
 };
@@ -94,8 +99,27 @@ let getLatestArticles = (successCallback) => {
   })
 };
 
+let fetch_articles = (categories, successCallback) => {
+    let result = [];
+    let length = categories.length;
+    for(let i=0;i<length;i++){
+      let category = categories[i];
+      let temp = category.split(seperator);
+      let from_website = temp[0];
+      let from_category = temp[1];
+      Article.find({website: from_website, feedType: from_category}).sort({timeStamp: -1}).limit(threshold).exec(function(err, docs){
+        if(err) throw err;
+        console.log(docs);
+        result.push(docs);
+        if(i === length - 1){
+          successCallback(result);
+        }
+      });
+    }
+};
+
 router.get('/storeArticles', (req, res) => {
-  fetch_articles();
+  store_articles();
   res.send("<marquee direction='ltr'> hello world</marquee>");
 });
 
@@ -114,5 +138,23 @@ router.get('/:articleType', (req, res) => {
   };
   get_articles(articleType, sendResponse);
 });
+
+
+// sample request: ["toi.tech", "toi.sports"]
+// sample response: [[{}, {}, {}], [{}, {}, {}]]
+router.post('/api/fetch_articles', (req, res) => {
+  let body = req.body;
+  function sendResponse(articles){
+    res.send(articles)
+  }
+  if(req.body && Array.isArray(req.body)){
+    fetch_articles(req.body, sendResponse)
+  }else{
+    res.write('Oops.. Not a valid request')
+    res.end();
+  }
+
+});
+
 
 module.exports = router;
