@@ -1,20 +1,33 @@
 const express = require('express');
-const app = express();
 const mongoose = require('mongoose');
+const keys= require('./config/keys')
+const passport = require('passport');
 const bodyParser = require('body-parser');
+require('./models/user')
+require('./services/passport');
 
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+mongoose.connect(keys.mongoURI)
 
-const server = 'localhost:27017';
-const database = 'majorproject';
+const app=express();
 
-let db_url = `mongodb://${server}/${database}`
-let db_options = {useNewUrlParser: true};
-mongoose.connect(db_url, db_options);
 
+app.use(bodyParser.json())
+app.use(passport.initialize())
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "http://localhost:3000");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "OPTIONS, GET, PUT, POST, DELETE, PATCH"
+  );
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Access-Control-Allow-Credentials",true)
+  next();
+});
+
+require('./routes/authRoutes')(app)
 const articlesRouter = require('./routes/articles.js');
 
 app.use('/',articlesRouter);
 
-module.exports = app;
+const port =process.env.PORT || 5000;
+app.listen(port)

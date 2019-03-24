@@ -4,6 +4,6 @@ clone the repository
 
 npm install
 
-nodemon bin/www
+npm run dev
 
-hahah
+
