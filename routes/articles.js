@@ -1,12 +1,14 @@
+var mongoose = require('mongoose')
+
 const express = require('express');
 const router = express.Router();
 const rp = require('request-promise');
 const xml2js = require ('xml2js');
 const Article = require('../models/Article')
-const feed_urls = require('../feed_urls.js')
+const feed_urls = require('../config/feed_urls.js')
 const threshold = 10;
 const seperator = '.';
-
+const User=mongoose.model('users')
 var response = [];
 
 function getFeed(url, feedType, website){
@@ -28,7 +30,6 @@ function getFeed(url, feedType, website){
           response.push(item)
         })
         var payloadString=JSON.stringify(response);
-        console.log();
         save_articles(response, feedType, website);
       });
     })
@@ -43,7 +44,7 @@ let save_articles = (articles_list, feedType, website) => {
     Article.findOne({"feedType": feedType, "title": article.title}, function(err, doc, successCallback=storeArticle){
       if(err) throw err;
       if(doc){
-        console.log('Article is existing in the db');
+        // console.log('Article is existing in the db');
       }else{
         successCallback(article, feedType, website);
       }
@@ -59,28 +60,27 @@ let storeArticle = function(article, feedType, website){
   record.link = article.link;
   record.category = article.category;
   record.description = article.description || "None";
-  console.log("start\n",article.description, "end\n")
   record.pubDate = article.date;
   record.save(function(err, row){
     if(err) throw err;
     else{
       if(row){
-        console.log('Record insert successfull', row)
+        // console.log('Record insert successfull', row)
       }
     }
   });
 };
 
 let store_articles = () => {
-  console.log('List of feed_urls', feed_urls);
+  // console.log('List of feed_urls', feed_urls);
   for(let feed of Object.entries(feed_urls)){
       let website = feed[0];
-      console.log('for website', website)
+      // console.log('for website', website)
       let urls = feed[1];
       Object.entries(urls).forEach((array) => {
         let url = array[1];
         let feedType = array[0];
-        console.log(`Hitting the URL ${url} for the articles`);
+        // console.log(`Hitting the URL ${url} for the articles`);
         getFeed(url, feedType, website);
       });
   }
@@ -109,8 +109,7 @@ let fetch_articles = (categories, successCallback) => {
       let from_category = temp[1];
       Article.find({website: from_website, feedType: from_category}).sort({timeStamp: -1}).limit(threshold).exec(function(err, docs){
         if(err) throw err;
-        console.log(docs);
-        result.push(docs);
+        result.push(...docs);
         if(i === length - 1){
           successCallback(result);
         }
@@ -120,7 +119,7 @@ let fetch_articles = (categories, successCallback) => {
 
 router.get('/storeArticles', (req, res) => {
   store_articles();
-  res.send("<marquee direction='ltr'> hello world</marquee>");
+  res.send("articles stored");
 });
 
 router.get('/latest', (req, res) => {
@@ -132,7 +131,7 @@ router.get('/latest', (req, res) => {
 
 router.get('/:articleType', (req, res) => {
   let articleType = req.params.articleType;
-  console.log(articleType)
+  // console.log(articleType)
   function sendResponse(articles){
     res.send(articles);
   };
@@ -151,10 +150,20 @@ router.post('/api/fetch_articles', (req, res) => {
     fetch_articles(req.body, sendResponse)
   }else{
     res.write('Oops.. Not a valid request')
+    res.write(JSON.stringify(req.body))
     res.end();
   }
-
 });
 
+router.post('/api/fetch_subscribtions', (req, res) => {
+  if(req.body.userId){
+    User.findById(req.body.userId)
+    .then(user=>{
+      res.send(user.subscriptions)
+    })
+  }else{
+    res.send('Bad Request'+JSON.stringify(req.body))
+  }
+});
 
 module.exports = router;
