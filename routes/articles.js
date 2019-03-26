@@ -6,13 +6,13 @@ const rp = require('request-promise');
 const xml2js = require ('xml2js');
 const Article = require('../models/Article')
 const feed_urls = require('../config/feed_urls.js')
-const threshold = 10;
+const threshold = 50;
 const seperator = '.';
 const User=mongoose.model('users')
-var response = [];
+
 
 function getFeed(url, feedType, website){
-  response = [];
+  let response = [];
   rp(url)
     .then(function(html){
       xml2js.parseString (html,(err,res)=>{
@@ -24,7 +24,7 @@ function getFeed(url, feedType, website){
           let item={}
           item.title=items[i].title?items[i].title[0]:'No title';
           item.link=items[i].link?items[i].link[0]:'Link not available';
-          item.date=items[i].pubDate?items[i].pubDate[0]:'Published date not available';
+          item.date= new Date(items[i].pubDate).toISOString() ?items[i].pubDate[0]: new Date(Date.now()).toISOString();
           item.category=items[i].category?items[i].category[0]:'Category not available';
           item.description=items[i].description?items[i].description[0]:'Description not available';
           response.push(item)
@@ -53,7 +53,7 @@ let save_articles = (articles_list, feedType, website) => {
 };
 
 let storeArticle = function(article, feedType, website){
-  var record = new Article();
+  let record = new Article();
   record.feedType = feedType;
   record.website = website;
   record.title = article.title;
@@ -87,30 +87,32 @@ let store_articles = () => {
 };
 
 let get_articles = (articleType, successCallback) => {
-  Article.find({feedType: articleType}).sort({timeStamp: -1}).limit(threshold).exec(function(err, docs){
+  Article.find({feedType: articleType}).sort({pubDate: -1}).limit(threshold).exec(function(err, docs){
     if(err) throw err;
     successCallback(docs);
   })
 };
 
 let getLatestArticles = (successCallback) => {
-  Article.find({}).sort({timeStamp: -1}).limit(threshold).exec(function(err, docs){
+  Article.find({}).sort({pubDate: -1}).limit(threshold).exec(function(err, docs){
     successCallback(docs);
   })
 };
 
 let fetch_articles = (categories, successCallback) => {
     let result = [];
+    let index= 0;
     let length = categories.length;
     for(let i=0;i<length;i++){
       let category = categories[i];
       let temp = category.split(seperator);
       let from_website = temp[0];
       let from_category = temp[1];
-      Article.find({website: from_website, feedType: from_category}).sort({timeStamp: -1}).limit(threshold).exec(function(err, docs){
+      Article.find({website: from_website, feedType: from_category}).sort({pubDate: -1}).limit(threshold).exec(function(err, docs){
         if(err) throw err;
         result.push(...docs);
-        if(i === length - 1){
+        index += 1;
+        if(index === length - 1){
           successCallback(result);
         }
       });

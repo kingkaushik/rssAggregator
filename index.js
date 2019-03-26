@@ -6,7 +6,7 @@ const bodyParser = require('body-parser');
 require('./models/user')
 require('./services/passport');
 
-mongoose.connect(keys.mongoURI)
+mongoose.connect(keys.mongoURI, { useNewUrlParser: true })
 
 const app=express();
 
@@ -30,4 +30,6 @@ const articlesRouter = require('./routes/articles.js');
 app.use('/',articlesRouter);
 
 const port =process.env.PORT || 5000;
-app.listen(port)
+app.listen(port, () => {
+	console.log(`Listening on port ${port}`)
+})
