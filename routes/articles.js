@@ -94,7 +94,7 @@ let get_articles = (articleType, successCallback) => {
 };
 
 let getLatestArticles = (successCallback) => {
-  Article.find({}).sort({timeStamp: -1}).limit(threshold).exec(function(err, docs){
+  Article.find({}).sort({pubDate: -1}).limit(threshold).exec(function(err, docs){
     successCallback(docs);
   })
 };
@@ -108,7 +108,7 @@ let fetch_articles = (categories, successCallback) => {
       let temp = category.split(seperator);
       let from_website = temp[0];
       let from_category = temp[1];
-      Article.find({website: from_website, feedType: from_category}).sort({timeStamp: -1}).limit(threshold).exec(function(err, docs){
+      Article.find({website: from_website, feedType: from_category}).sort({pubDate: -1}).limit(threshold).exec(function(err, docs){
         if(err) throw err;
         result.push(...docs);
         index += 1;
