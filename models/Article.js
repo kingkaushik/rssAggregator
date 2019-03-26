@@ -28,7 +28,7 @@ var articleSchema = new schema({
     default: Date.now
   },
   pubDate: {
-    type: String,
+    type: Date,
     required: true
   },
   website: {
